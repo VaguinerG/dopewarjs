@@ -1,0 +1,116 @@
+body {
+    background-color: #1a1a1a;
+    color: #ffffff;
+    font-family: 'Courier New', monospace;
+    margin: 0;
+    padding: 0;
+}
+
+.game-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.status-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 5px;
+    background-color: #252525;
+    padding: 10px;
+    border-bottom: 1px solid #333;
+    text-align: center;
+}
+
+.content {
+    display: grid;
+    grid-template-columns: 2fr 2fr 1fr; /* Aumenta o espaço do inventário */
+    gap: 10px;
+    flex: 1;
+    padding: 10px;
+}
+
+.market, .inventory-section, .locations, .log {
+    background-color: #252525;
+    padding: 10px;
+    border-radius: 5px;
+    overflow-y: auto;
+}
+
+.locations {
+    background-color: #252525;
+    padding: 10px;
+    border-radius: 5px;
+    max-height: 450px; /* Reduz a altura do bloco de localizações */
+    overflow-y: auto;
+}
+
+.inventory-section {
+    background-color: #252525;
+    padding: 10px;
+    border-radius: 5px;
+    max-height: 450px; /* Aumenta a altura do inventário */
+    overflow-y: auto;
+}
+
+.market h3, .inventory-section h3, .locations h3, .log h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.2em;
+}
+
+.market-item, .inventory-item {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px auto;
+    align-items: center;
+    gap: 10px;
+    padding: 5px;
+    margin: 5px 0;
+    background-color: #333;
+    border-radius: 3px;
+}
+
+.market-item span, .inventory-item span {
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.market-item .item-controls, .inventory-item .item-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.market-item input[type="range"], .inventory-item input[type="range"] {
+    width: 100px;
+}
+
+.market-item button, .inventory-item button {
+    padding: 5px;
+    background-color: #444;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.market-item button:hover, .inventory-item button:hover {
+    background-color: #555;
+}
+
+.locations button {
+    display: block;
+    width: 100%;
+    margin: 5px 0;
+    padding: 5px;
+    background-color: #444;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.locations button:hover {
+    background-color: #555;
+}
