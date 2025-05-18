@@ -9,14 +9,14 @@ body {
 .game-container {
     display: flex;
     flex-direction: column;
-    width: 100%;
+    width: 100vw;
     height: 100vh;
     overflow: hidden;
 }
 
 .status-bar {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
     gap: 5px;
     background-color: #252525;
     padding: 10px;
@@ -26,10 +26,11 @@ body {
 
 .content {
     display: grid;
-    grid-template-columns: 2fr 2fr 1fr; /* Aumenta o espaço do inventário */
+    grid-template-columns: 2fr 2fr 1.2fr;
     gap: 10px;
     flex: 1;
     padding: 10px;
+    min-height: 0;
 }
 
 .market, .inventory-section, .locations, .log {
@@ -37,22 +38,7 @@ body {
     padding: 10px;
     border-radius: 5px;
     overflow-y: auto;
-}
-
-.locations {
-    background-color: #252525;
-    padding: 10px;
-    border-radius: 5px;
-    max-height: 450px; /* Reduz a altura do bloco de localizações */
-    overflow-y: auto;
-}
-
-.inventory-section {
-    background-color: #252525;
-    padding: 10px;
-    border-radius: 5px;
-    max-height: 450px; /* Aumenta a altura do inventário */
-    overflow-y: auto;
+    min-height: 0;
 }
 
 .market h3, .inventory-section h3, .locations h3, .log h3 {
@@ -113,4 +99,18 @@ body {
 
 .locations button:hover {
     background-color: #555;
+}
+
+.log {
+    background-color: #252525;
+    padding: 10px;
+    border-radius: 5px;
+    max-height: 150px;
+    overflow-y: auto;
+    font-size: 0.85em;
+}
+
+.log div {
+    margin-bottom: 3px;
+    font-size: 0.85em;
 }

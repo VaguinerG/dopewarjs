@@ -3,10 +3,9 @@ class Item {
         this.name = name;
         this.minPrice = minPrice;
         this.maxPrice = maxPrice;
-        this.weight = weight; // in kg or g depending on the item
+        this.weight = weight;
         this.currentPrice = this.generatePrice();
     }
-
     generatePrice() {
         return Math.floor(Math.random() * (this.maxPrice - this.minPrice + 1)) + this.minPrice;
     }
@@ -18,10 +17,7 @@ class Player {
         this.bank = 0;
         this.debt = 5000;
         this.health = 100;
-        this.storage = {
-            capacity: 5, // in kg
-            used: 0
-        };
+        this.storage = { capacity: 5, used: 0 };
         this.soldiers = 0;
         this.inventory = {};
         this.day = 1;
@@ -34,7 +30,7 @@ class Game {
         this.player = new Player();
         this.locations = [
             "Copacabana", "Rocinha", "Maré",
-            "Tijuca", "Centro", "Barra da Tijuca", "Complexo do Alemão"
+            "Tijuca", "Centro", "Barra da Tijuca", "Complexo do Alemão", "Banco"
         ];
         this.items = [
             new Item("Maconha", 2, 4, 0.001),
@@ -48,68 +44,251 @@ class Game {
         ];
         this.previousPrices = {};
         this.logMessages = [];
-        this.maxLoan = 50000; // Máximo que pode ser tomado emprestado do agiota
-        this.loanSharkSoldiers = 10; // Soldados do agiota
-        this.soldierBaseCost = 1000; // Custo inicial de um soldado
-        this.soldierCostMultiplier = 1.5; // Multiplicador de custo para cada compra subsequente
+        this.maxLoan = 50000;
+        this.loanSharkSoldiers = 10;
+        this.soldierBaseCost = 1000;
+        this.soldierCostMultiplier = 1.5;
+        this.events = [];
+        this.reputation = 50;
+        this.policeAlertLevel = 0;
+        this.maxReputation = 100;
+        this.maxPoliceAlert = 100;
+        this.bankInterestRate = 0.02;
+        this.gameOver = false;
         this.initializeGame();
     }
 
     initializeGame() {
-        this.addLogMessage("Bem-vindo ao mundo do crime!");
-        this.addLogMessage("Você desistiu da vida honesta e entrou para o crime, mas está devendo R$5.000 ao agiota.");
+        this.log("Bem-vindo ao mundo do crime.");
+        this.log("Você desistiu da vida honesta e entrou para o crime, mas está devendo R$5.000 ao agiota.");
         this.updatePrices();
+        this.generateRandomEvents();
         this.renderUI();
     }
 
-    addLogMessage(message) {
-        this.logMessages.unshift(message); // Adiciona a mensagem no início do log
-        if (this.logMessages.length > 10) {
-            this.logMessages.pop(); // Remove mensagens antigas para manter o log compacto
-        }
+    log(message) {
+        this.logMessages.unshift(message);
+        if (this.logMessages.length > 20) this.logMessages.pop();
         this.renderLog();
     }
 
-    updatePrices() {
-        this.items.forEach(item => {
-            const oldPrice = item.currentPrice || 0;
-            item.currentPrice = item.generatePrice();
+    generateRandomEvents() {
+        this.events = [
+            { name: "Polícia na área", effect: () => this.increasePoliceAlert(10), chance: 0.08 },
+            { name: "Demanda alta", effect: () => this.increasePrices(20), chance: 0.08 },
+            { name: "Demanda baixa", effect: () => this.decreasePrices(20), chance: 0.08 },
+            { name: "Cracudo roubou", effect: () => this.stealMoney(500), chance: 0.04 },
+            { name: "Prostituta pediu propina", effect: () => this.payBribe(300), chance: 0.04 },
+            { name: "Policial corrupto pede propina", effect: () => this.policeBribeEvent(), chance: 0.04 },
+            { name: "Informante preso", effect: () => this.decreaseReputation(10), chance: 0.03 },
+            { name: "Suborno bem-sucedido", effect: () => this.decreasePoliceAlert(20), chance: 0.03 },
+            { name: "Polícia faz batida surpresa", effect: () => this.policeRaid(), chance: 0.03 },
+            { name: "Cliente VIP", effect: () => this.vipClient(), chance: 0.02 },
+            { name: "Cracudo pede ajuda", effect: () => this.helpCracudo(), chance: 0.02 },
+            { name: "Polícia oferece proteção", effect: () => this.policeProtectionEvent(), chance: 0.02 },
+            { name: "Polícia pede informação", effect: () => this.policeInfoEvent(), chance: 0.02 },
+            { name: "Polícia tenta te prender", effect: () => this.policeArrestEvent(), chance: 0.02 },
+            { name: "Polícia faz busca", effect: () => this.policeSearchEvent(), chance: 0.02 },
+        ];
+    }
 
-            // Eventos raros de variação de preço
-            const randomEvent = Math.random();
-            if (randomEvent <= 0.005) {
-                item.currentPrice *= 10;
-                this.addLogMessage(`🚨 Demanda explosiva! O preço de ${item.name} disparou drasticamente.`);
-            } else if (randomEvent <= 0.01) {
-                item.currentPrice /= 10;
-                this.addLogMessage(`🚨 Produção em massa! O preço de ${item.name} caiu drasticamente.`);
-            } else if (randomEvent <= 0.03) {
-                item.currentPrice /= 4;
-                this.addLogMessage(`📉 Aumento na produção de ${item.name}, reduzindo o preço.`);
-            } else if (randomEvent <= 0.05) {
-                item.currentPrice *= 4;
-                this.addLogMessage(`📈 Escassez de ${item.name} no mercado, aumentando o preço.`);
+    triggerRandomEvent() {
+        if (this.gameOver) return;
+        this.events.forEach(event => {
+            if (Math.random() < event.chance) {
+                event.effect();
+                this.log(`Evento: ${event.name}`);
             }
-
-            this.previousPrices[item.name] = oldPrice;
         });
     }
 
+    stealMoney(amount) {
+        if (this.player.money >= amount) {
+            this.player.money -= amount;
+            this.log(`Um cracudo roubou R$${amount.toFixed(2)} de você.`);
+        }
+    }
+
+    payBribe(amount) {
+        if (this.player.money >= amount) {
+            this.player.money -= amount;
+            this.log(`Você pagou R$${amount.toFixed(2)} de propina.`);
+        }
+    }
+
+    policeBribeEvent() {
+        if (this.gameOver) return;
+        if (confirm("Um policial corrupto pede R$1000 de propina para não aumentar seu alerta policial. Pagar?")) {
+            if (this.player.money >= 1000) {
+                this.player.money -= 1000;
+                this.decreasePoliceAlert(10);
+                this.log("Você pagou propina ao policial e diminuiu o alerta.");
+            } else {
+                this.increasePoliceAlert(10);
+                this.log("Você não tinha dinheiro para pagar propina. O alerta aumentou.");
+            }
+        } else {
+            this.increasePoliceAlert(10);
+            this.log("Você recusou pagar propina. O alerta aumentou.");
+        }
+    }
+
+    policeProtectionEvent() {
+        if (this.gameOver) return;
+        if (confirm("A polícia oferece proteção por R$2000. Aceitar?")) {
+            if (this.player.money >= 2000) {
+                this.player.money -= 2000;
+                this.decreasePoliceAlert(20);
+                this.increaseReputation(5);
+                this.log("Você aceitou proteção policial. Alerta diminuiu e reputação aumentou.");
+            } else {
+                this.log("Você não tinha dinheiro para aceitar proteção.");
+            }
+        }
+    }
+
+    policeInfoEvent() {
+        if (this.gameOver) return;
+        if (confirm("A polícia pede informações sobre um rival. Se aceitar, reputação diminui mas alerta policial diminui. Aceitar?")) {
+            this.decreaseReputation(10);
+            this.decreasePoliceAlert(15);
+            this.log("Você colaborou com a polícia. Alerta diminuiu, reputação caiu.");
+        }
+    }
+
+    policeArrestEvent() {
+        if (this.gameOver) return;
+        if (Math.random() < 0.5) {
+            this.player.health -= 20;
+            this.increasePoliceAlert(15);
+            this.log("A polícia tentou te prender. Você resistiu e perdeu saúde.");
+            if (this.player.health <= 0) this.endGame();
+        } else {
+            this.log("A polícia tentou te prender, mas você escapou.");
+        }
+    }
+
+    policeSearchEvent() {
+        if (this.gameOver) return;
+        let found = false;
+        for (const [item, qty] of Object.entries(this.player.inventory)) {
+            if (qty > 0 && Math.random() < 0.3) {
+                this.player.inventory[item] = 0;
+                found = true;
+                this.log(`A polícia encontrou e confiscou todo seu ${item}.`);
+            }
+        }
+        if (!found) this.log("A polícia fez busca, mas não encontrou nada.");
+    }
+
+    policeRaid() {
+        if (this.gameOver) return;
+        const loss = Math.floor(this.player.money * 0.3);
+        this.player.money -= loss;
+        this.policeAlertLevel += 10;
+        this.log(`A polícia fez uma batida surpresa. Você perdeu R$${loss} e o alerta aumentou.`);
+    }
+
+    vipClient() {
+        if (this.gameOver) return;
+        const item = this.items[Math.floor(Math.random() * this.items.length)];
+        const qty = Math.floor(Math.random() * 10) + 1;
+        if ((this.player.inventory[item.name] || 0) >= qty) {
+            const bonus = item.currentPrice * qty * 2;
+            this.player.money += bonus;
+            this.player.inventory[item.name] -= qty;
+            this.log(`Cliente VIP comprou ${qty}g de ${item.name} por R$${bonus.toFixed(2)}.`);
+        }
+    }
+
+    helpCracudo() {
+        if (this.gameOver) return;
+        if (this.player.money >= 100) {
+            this.player.money -= 100;
+            this.increaseReputation(5);
+            this.log("Você ajudou um cracudo e ganhou reputação.");
+        }
+    }
+
+    depositMoney(amount) {
+        if (this.gameOver) return;
+        if (amount > 0 && this.player.money >= amount) {
+            this.player.money -= amount;
+            this.player.bank += amount;
+            this.log(`Você depositou R$${amount.toFixed(2)} no banco.`);
+            this.renderUI();
+        } else {
+            alert("Dinheiro insuficiente para depositar!");
+        }
+    }
+
+    withdrawMoney(amount) {
+        if (this.gameOver) return;
+        if (amount > 0 && this.player.bank >= amount) {
+            this.player.bank -= amount;
+            this.player.money += amount;
+            this.log(`Você sacou R$${amount.toFixed(2)} do banco.`);
+            this.renderUI();
+        } else {
+            alert("Dinheiro insuficiente no banco para sacar!");
+        }
+    }
+
+    increasePoliceAlert(amount) {
+        this.policeAlertLevel = Math.min(this.maxPoliceAlert, this.policeAlertLevel + amount);
+        this.log(`🚨 Nível de alerta da polícia aumentou para ${this.policeAlertLevel}.`);
+        if (this.policeAlertLevel >= 100) {
+            this.log("🚔 A polícia invadiu sua operação! Você perdeu tudo.");
+            this.endGame();
+        }
+    }
+
+    decreasePoliceAlert(amount) {
+        this.policeAlertLevel = Math.max(0, this.policeAlertLevel - amount);
+        this.log(`🚔 Nível de alerta da polícia diminuiu para ${this.policeAlertLevel}.`);
+    }
+
+    increaseReputation(amount) {
+        this.reputation = Math.min(this.maxReputation, this.reputation + amount);
+        this.log(`⭐ Sua reputação aumentou para ${this.reputation}.`);
+    }
+
+    decreaseReputation(amount) {
+        this.reputation = Math.max(0, this.reputation - amount);
+        this.log(`⚠️ Sua reputação diminuiu para ${this.reputation}.`);
+    }
+
+    increasePrices(percentage) {
+        this.items.forEach(item => {
+            item.currentPrice *= 1 + percentage / 100;
+        });
+        this.log("📈 Os preços das drogas aumentaram devido à alta demanda.");
+    }
+
+    decreasePrices(percentage) {
+        this.items.forEach(item => {
+            item.currentPrice *= 1 - percentage / 100;
+        });
+        this.log("📉 Os preços das drogas diminuíram devido à baixa demanda.");
+    }
+
     moveToLocation(newLocation) {
+        if (this.gameOver) return;
         if (this.locations.includes(newLocation)) {
             this.player.currentLocation = newLocation;
-            this.addLogMessage(`Você se mudou para ${newLocation}.`);
-            this.nextDay(); // Avança o dia
-            this.updatePrices(); // Atualiza os preços das drogas
-            this.renderUI(); // Atualiza a interface
+            this.log(`Você se mudou para ${newLocation}.`);
+            this.nextDay();
+            this.updatePrices();
+            this.triggerRandomEvent();
+            this.renderUI();
         }
     }
 
     buyItem(itemName, quantity) {
+        if (this.gameOver) return;
         const item = this.items.find(i => i.name === itemName);
         const totalCost = item.currentPrice * quantity;
         const totalWeight = item.weight * quantity;
-
         if (quantity > 0 && this.player.money >= totalCost) {
             if (this.player.storage.used + totalWeight <= this.player.storage.capacity) {
                 this.player.money -= totalCost;
@@ -125,17 +304,16 @@ class Game {
     }
 
     sellItem(itemName, quantity) {
+        if (this.gameOver) return;
         const item = this.items.find(i => i.name === itemName);
         if (quantity > 0 && this.player.inventory[itemName] >= quantity) {
             const totalPrice = item.currentPrice * quantity;
             this.player.money += totalPrice;
             this.player.inventory[itemName] -= quantity;
             this.player.storage.used -= item.weight * quantity;
-
             if (this.player.inventory[itemName] <= 0) {
                 delete this.player.inventory[itemName];
             }
-
             this.renderUI();
         } else {
             alert("Quantidade inválida ou insuficiente no inventário!");
@@ -143,36 +321,35 @@ class Game {
     }
 
     nextDay() {
+        if (this.gameOver) return;
         this.player.day++;
         if (this.player.debt > 0) {
-            const debtIncrease = this.player.debt * (Math.random() * 0.25 + 0.01); // 1% a 25% do valor atual
+            const debtIncrease = this.player.debt * (Math.random() * 0.25 + 0.01);
             this.player.debt += debtIncrease;
-            this.addLogMessage(`💳 Sua dívida aumentou para R$${this.player.debt.toFixed(2)}.`);
-
-            // Enviar soldados do agiota se a dívida for maior que 100k
-            if (this.player.debt > 100000) {
-                const extraSoldiers = Math.floor((this.player.debt - 100000) / 10000);
-                this.attackPlayer(extraSoldiers);
-            }
+            this.log(`Sua dívida aumentou para R$${this.player.debt.toFixed(2)}.`);
         }
+        if (this.player.bank > 0) {
+            const interest = this.player.bank * this.bankInterestRate;
+            this.player.bank += interest;
+            this.log(`Você ganhou R$${interest.toFixed(2)} de juros no banco.`);
+        }
+        this.triggerRandomEvent();
     }
 
     attackPlayer(extraSoldiers) {
         const totalSoldiers = extraSoldiers + this.loanSharkSoldiers;
         const playerSoldiers = this.player.soldiers;
-
         if (playerSoldiers >= totalSoldiers) {
-            this.addLogMessage(`👥 Seus soldados derrotaram os ${totalSoldiers} soldados enviados pelo agiota.`);
+            this.log(`👥 Seus soldados derrotaram os ${totalSoldiers} soldados enviados pelo agiota.`);
             this.player.soldiers -= totalSoldiers;
         } else {
             const damage = (totalSoldiers - playerSoldiers) * 10;
             this.player.health -= damage;
-            this.player.soldiers = 0; // Todos os soldados do player morreram
-            this.addLogMessage(`💥 O agiota enviou ${totalSoldiers} soldados. Você sofreu ${damage} de dano.`);
+            this.player.soldiers = 0;
+            this.log(`💥 O agiota enviou ${totalSoldiers} soldados. Você sofreu ${damage} de dano.`);
         }
-
         if (this.player.health <= 0) {
-            this.addLogMessage("☠️ Você morreu! O agiota tomou tudo.");
+            this.log("☠️ Você morreu! O agiota tomou tudo.");
             this.endGame();
         }
     }
@@ -196,13 +373,13 @@ class Game {
 
     payLoan() {
         const slider = document.getElementById('loan-slider');
-        const amount = parseFloat(slider.value); // Aceita valores decimais
+        const amount = parseFloat(slider.value);
         if (amount > 0 && this.player.money >= amount) {
             this.player.money -= amount;
             this.player.debt -= amount;
-            if (this.player.debt <= 1) { // Se a dívida for menor ou igual a 1, zera
+            if (this.player.debt <= 1) {
                 this.player.debt = 0;
-                this.addLogMessage("💳 Você quitou sua dívida com o agiota!");
+                this.log("💳 Você quitou sua dívida com o agiota!");
             }
             this.renderUI();
         } else {
@@ -216,7 +393,7 @@ class Game {
         if (amount > 0 && this.player.debt === 0 && amount <= this.maxLoan) {
             this.player.money += amount;
             this.player.debt += amount;
-            this.logMessage(`💳 Você tomou emprestado R$${amount} do agiota.`);
+            this.log(`💳 Você tomou emprestado R$${amount} do agiota.`);
             this.renderUI();
         } else {
             alert("Não é possível tomar emprestado no momento!");
@@ -228,8 +405,8 @@ class Game {
         if (this.player.money >= cost) {
             this.player.money -= cost;
             this.player.soldiers++;
-            this.player.storage.capacity += 2; // Cada soldado aumenta o storage em 2kg
-            this.addLogMessage(`👥 Você comprou um soldado por R$${cost.toFixed(2)}. Agora você tem ${this.player.soldiers} soldados.`);
+            this.player.storage.capacity += 2;
+            this.log(`👥 Você comprou um soldado por R$${cost.toFixed(2)}. Agora você tem ${this.player.soldiers} soldados.`);
             this.renderUI();
         } else {
             alert("Dinheiro insuficiente para comprar um soldado!");
@@ -238,17 +415,17 @@ class Game {
 
     attackLoanShark() {
         if (this.player.soldiers > this.loanSharkSoldiers) {
-            this.addLogMessage("☠️ Você matou o agiota! Ele não existe mais no jogo.");
+            this.log("☠️ Você matou o agiota! Ele não existe mais no jogo.");
             this.loanSharkSoldiers = 0;
             this.player.debt = 0;
             this.renderUI();
         } else {
             const damage = (this.loanSharkSoldiers - this.player.soldiers) * 10;
             this.player.health -= damage;
-            this.player.soldiers = 0; // Todos os soldados do player morreram
-            this.addLogMessage(`💥 Você tentou atacar o agiota, mas falhou. Você sofreu ${damage} de dano.`);
+            this.player.soldiers = 0;
+            this.log(`💥 Você tentou atacar o agiota, mas falhou. Você sofreu ${damage} de dano.`);
             if (this.player.health <= 0) {
-                this.addLogMessage("☠️ Você morreu! O agiota tomou tudo.");
+                this.log("☠️ Você morreu! O agiota tomou tudo.");
                 this.endGame();
             }
         }
@@ -260,13 +437,17 @@ class Game {
         this.renderInventory();
         this.renderLocations();
         this.renderLog();
+        if (this.gameOver) {
+            // Bloqueia todos os botões e sliders
+            document.querySelectorAll("button, input[type=range]").forEach(el => el.disabled = true);
+        }
     }
 
     renderLog() {
         const logDiv = document.getElementById('log');
         if (logDiv) {
-            logDiv.innerHTML = '<h3>Log de Mensagens</h3>';
-            logDiv.innerHTML += this.logMessages.map(msg => `<div>${msg}</div>`).join('');
+            logDiv.innerHTML = '<h3 style="font-size:0.95em;font-weight:normal;margin-bottom:5px;">Log de Mensagens</h3>';
+            logDiv.innerHTML += this.logMessages.map(msg => `<div style="font-size:0.85em;">${msg}</div>`).join('');
         }
     }
 
@@ -279,6 +460,8 @@ class Game {
                 <div>🏦 Bank: R$${this.player.bank.toFixed(2)}</div>
                 <div style="color: ${debtColor};">💳 Debt: R$${this.player.debt.toFixed(2)}</div>
                 <div>❤️ Health: ${this.player.health}%</div>
+                <div>⭐ Reputation: ${this.reputation}</div>
+                <div>🚔 Police Alert: ${this.policeAlertLevel}</div>
                 <div>📦 Storage: ${this.player.storage.used.toFixed(2)}/${this.player.storage.capacity.toFixed(2)}kg</div>
                 <div>👥 Soldiers: ${this.player.soldiers}</div>
                 <div>📍 Location: ${this.player.currentLocation}</div>
@@ -288,12 +471,20 @@ class Game {
     }
 
     getDebtColor(debt) {
-        const maxDebt = 100000; // 100k is fully red
-        const acceptableDebt = 50000; // 50k is green
+        const maxDebt = 100000;
+        const acceptableDebt = 50000;
         const ratio = Math.min(1, (debt - acceptableDebt) / (maxDebt - acceptableDebt));
         const red = Math.floor(255 * ratio);
         const green = Math.floor(255 * (1 - ratio));
         return `rgb(${red}, ${green}, 0)`;
+    }
+
+    updatePrices() {
+        this.items.forEach(item => {
+            const oldPrice = item.currentPrice || 0;
+            item.currentPrice = item.generatePrice();
+            this.previousPrices[item.name] = oldPrice;
+        });
     }
 
     renderMarket() {
@@ -306,7 +497,6 @@ class Game {
             );
             const priceChange = this.calculatePriceChange(item);
             const priceChangeColor = priceChange > 0 ? 'darkgreen' : 'darkred';
-
             const itemDiv = document.createElement('div');
             itemDiv.className = 'market-item';
             itemDiv.innerHTML = `
@@ -357,6 +547,17 @@ class Game {
             }
         });
 
+        if (this.player.currentLocation === "Banco") {
+            const bankDiv = document.createElement('div');
+            bankDiv.id = 'bank';
+            bankDiv.innerHTML = `
+                <h3>Banco</h3>
+                <button onclick="game.depositMoney(1000)">Depositar R$1000</button>
+                <button onclick="game.withdrawMoney(1000)">Sacar R$1000</button>
+            `;
+            locationsDiv.appendChild(bankDiv);
+        }
+
         if (this.player.currentLocation === "Rocinha" && this.loanSharkSoldiers > 0) {
             const loanSharkDiv = document.createElement('div');
             loanSharkDiv.id = 'loan-shark';
@@ -398,8 +599,9 @@ class Game {
     }
 
     endGame() {
-        alert("☠️ Game Over! Você perdeu.");
-        location.reload(); // Reinicia o jogo
+        this.gameOver = true;
+        this.log("GAME OVER. Você perdeu.");
+        this.renderUI();
     }
 }
 
